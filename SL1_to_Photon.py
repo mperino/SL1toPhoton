@@ -23,12 +23,21 @@ class SL1Reader:
         try:
             config = self.zf.read('config.ini')
         except KeyError:
-            print('ERROR: Did not find %s in zip file' % filename)
+            print('ERROR: Did not find config.ini in zipped sl1 file')
         else:
             self.config = {}
             for line in config.decode().splitlines():
                 key, value = line.strip().split('=')
                 self.config[key.strip()] = value.strip()
+        try:
+            prusaslicer = self.zf.read('prusaslicer.ini')
+        except KeyError:
+            print('ERROR: Did not find prusaslicer in zipped sl1 file')
+        else:
+            self.prusaslicer = {}
+            for line in prusaslicer.decode().splitlines():
+                key, value = line.strip().split('=',1)
+                self.prusaslicer[key.strip()] = value.strip()
 
     def extract_images(self, dirpath):
         try:
@@ -68,6 +77,17 @@ if __name__ == '__main__':
     photon.exposure_time_bottom = float(sl1.config['expTimeFirst'])
     photon.layer_height = float(sl1.config['layerHeight'])
     photon.bottom_layers = int(sl1.config['numFade'])
+# the try clause bellow is for importing settings from the prusaslicer.ini in the .sl1 file.
+# Current logic is to bomb out if we cant find the bed size, but we could default back to 1440 by uncommenting and commenting out the exit
+    try:
+        photon.bed_x = int(sl1.prusaslicer['display_width'])
+        photon.bed_y = int(sl1.prusaslicer['display_height'])
+    except:
+        print('ERROR: Unable to set display width or height from .sl1 file')
+        # print ("setting a default size of 1440x2560")
+        # photon.bed_x = 1440
+        # photon.bed_y = 2560
+        sys.exit(-1)
 
     if args.verbose:
         print('=== PARAMETERS ===')
@@ -76,6 +96,8 @@ if __name__ == '__main__':
         print('Layer Height: {}'.format(photon.layer_height))
         print('Bottom Layers: {}'.format(photon.bottom_layers))
         print('Layers: {}'.format(sl1.n_layers))
+        print('Display X Width: {}'.format(photon.bed_x))
+        print('Display Y Height: {}'.format(photon.bed_y))
         print('=== CONVERSION ===')
     with tempfile.TemporaryDirectory() as tmpdirname:
         if args.verbose:
